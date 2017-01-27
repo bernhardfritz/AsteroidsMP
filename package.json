@@ -1,0 +1,14 @@
+{
+  "name": "asteroidsmp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "",
+  "scripts": {
+    "live-server": "live-server --watch='./public' --open=./public" 
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "live-server": "^1.2.0"
+  }
+}
