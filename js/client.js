@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 global.THREE = THREE;
 import Stats from 'stats.js';
-import dat from 'dat-gui';
-require('./OBJLoader.js');
-require('./GPUParticleSystem.js');
+import dat from './dat.gui.js';
+import OBJLoader from './OBJLoader';
+import GPUParticleSystem from './GPUParticleSystem.js';
+import TrackballControls from './TrackballControls.js';
+import Spaceship from './Spaceship.js';
 
 class Game {
   constructor() {
@@ -13,30 +15,39 @@ class Game {
     this.particleSystem = new THREE.GPUParticleSystem({
       maxParticles: 250000
     });
+    this.controls = {};
     this.clock = new THREE.Clock(true);
     this.stats = new Stats();
     this.gui = new dat.GUI();
     this.settings = new Settings();
     this.objLoader = new THREE.OBJLoader();
     this.textureLoader = new THREE.TextureLoader();
-    this.pointLight = new THREE.PointLight(0xffffff, 2, 100);
     this.tick = 0;
-    this.options = {};
     this.spawnerOptions = {};
-    this.spaceshipMaterial = new THREE.MeshPhongMaterial();
+    this.spaceship = new Spaceship();
   }
 
   init() {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(this.renderer.domElement);
 
-    this.camera.position.set(0, 0, 50);
+    this.camera.position.set(0, 0, 100);
     this.camera.lookAt(new THREE.Vector3(0, 0, 0));
 
     this.stats.showPanel(0);
     document.body.appendChild(this.stats.dom);
 
-    this.scene.add(this.pointLight);
+    let urls = [
+      'textures/Starscape.png',
+      'textures/Starscape.png',
+      'textures/Starscape.png',
+      'textures/Starscape.png',
+      'textures/Starscape.png',
+      'textures/Starscape.png'
+    ];
+    let cubeTexture = new THREE.CubeTextureLoader().load(urls);
+    cubeTexture.format = THREE.RGBFormat;
+    this.scene.background = cubeTexture;
 
     let ambientLight = new THREE.AmbientLight(0x101030);
 		this.scene.add(ambientLight);
@@ -44,19 +55,6 @@ class Game {
 		// directionalLight.position.set(0, 0, 1);
 		// this.scene.add(directionalLight);
 
-    // options passed during each spawned
-    this.options = {
-      position: new THREE.Vector3(),
-      positionRandomness: 0.3,
-      velocity: new THREE.Vector3(),
-      velocityRandomness: 0.5,
-      color: 0xaa88ff,
-      colorRandomness: 0.2,
-      turbulence: 0.5,
-      lifetime: 2,
-      size: 5,
-      sizeRandomness: 1
-    };
     this.spawnerOptions = {
       spawnRate: 15000,
       horizontalSpeed: 1.5,
@@ -65,23 +63,17 @@ class Game {
     };
     this.scene.add(this.particleSystem);
 
-    this.objLoader.load('models/Arc170.obj', function(group) {
-      this.spaceshipMaterial.map = this.textureLoader.load("textures/ARC170_TXT_VERSION_4_D.png");
-      this.spaceshipMaterial.specularMap = this.textureLoader.load("textures/ARC170_TXT_VERSION_4_S.png");
-      this.spaceshipMaterial.normalMap = this.textureLoader.load("textures/ARC170_TXT_VERSION_4_N.png");
+    this.spaceship.init(this.scene, this.objLoader, this.textureLoader);
 
-      group.traverse(function(child) {
-				if (child instanceof THREE.Mesh) {
-          child.material = this.spaceshipMaterial;
-				}
-      }.bind(this));
-      group.rotation.x = - Math.PI / 2;
-      group.rotation.z = Math.PI;
-      group.position.set(0, 0, 0);
-      group.scale.set(0.01, 0.01, 0.01);
-      console.log(group);
-      this.scene.add(group);
-    }.bind(this));
+    this.controls = new THREE.TrackballControls(this.camera, this.renderer.domElement);
+    this.controls.rotateSpeed = 1.0;
+		this.controls.zoomSpeed = 1.2;
+		this.controls.panSpeed = 0.8;
+		this.controls.noZoom = false;
+		this.controls.noPan = false;
+		this.controls.staticMoving = true;
+		this.controls.dynamicDampingFactor = 0.3;
+		this.controls.keys = [65, 83, 68];
 
     this.initGui();
   }
@@ -101,21 +93,29 @@ class Game {
     cameraRotationFolder.add(this.camera.rotation, 'x', -1, 1).step(0.01);
     cameraRotationFolder.add(this.camera.rotation, 'y', -1, 1).step(0.01);
     cameraRotationFolder.add(this.camera.rotation, 'z', -1, 1).step(0.01);
-    let particleSystemFolder = this.gui.addFolder('particleSystem');
-    particleSystemFolder.add(this.options, "velocityRandomness", 0, 3);
-		particleSystemFolder.add(this.options, "positionRandomness", 0, 3);
-		particleSystemFolder.add(this.options, "size", 1, 20);
-		particleSystemFolder.add(this.options, "sizeRandomness", 0, 25);
-		particleSystemFolder.add(this.options, "colorRandomness", 0, 1);
-		particleSystemFolder.add(this.options, "lifetime", 0.1, 10);
-		particleSystemFolder.add(this.options, "turbulence", 0, 1);
-		particleSystemFolder.add(this.spawnerOptions, "spawnRate", 10, 30000);
-		particleSystemFolder.add(this.spawnerOptions, "timeScale", -1, 1);
+    // let particleSystemFolder = this.gui.addFolder('particleSystem');
+    // particleSystemFolder.add(this.options, "velocityRandomness", 0, 3);
+		// particleSystemFolder.add(this.options, "positionRandomness", 0, 3);
+		// particleSystemFolder.add(this.options, "size", 1, 20);
+		// particleSystemFolder.add(this.options, "sizeRandomness", 0, 25);
+		// particleSystemFolder.add(this.options, "colorRandomness", 0, 1);
+		// particleSystemFolder.add(this.options, "lifetime", 0.1, 10);
+		// particleSystemFolder.add(this.options, "turbulence", 0, 1);
+    // particleSystemFolder.add(this.options.position, 'x', -10, 10).step(0.01);
+    // particleSystemFolder.add(this.options.position, 'y', -10, 10).step(0.01);
+    // particleSystemFolder.add(this.options.position, 'z', -10, 10).step(0.01);
+    // particleSystemFolder.addColor(this.options, "color").onChange(function(colorValue) {
+    //   this.options.color = '0x'+colorValue.toString(16);
+    // }.bind(this));
+    //
+		// particleSystemFolder.add(this.spawnerOptions, "spawnRate", 10, 30000);
+		// particleSystemFolder.add(this.spawnerOptions, "timeScale", -1, 1);
 
     window.addEventListener('resize', function() {
       this.camera.aspect = window.innerWidth / window.innerHeight;
 			this.camera.updateProjectionMatrix();
 			this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.controls.handleResize();
     }.bind(this), false);
   }
 
@@ -131,17 +131,13 @@ class Game {
       this.tick = 0;
     }
 		if (delta > 0) {
-			this.options.position.x = Math.sin(this.tick * this.spawnerOptions.horizontalSpeed) * 20;
-			this.options.position.y = Math.sin(this.tick * this.spawnerOptions.verticalSpeed) * 10;
-			this.options.position.z = Math.sin(this.tick * this.spawnerOptions.horizontalSpeed + this.spawnerOptions.verticalSpeed) * 5;
 			for (var x = 0; x < this.spawnerOptions.spawnRate * delta; x++) {
-				// Yep, that's really it.	Spawning particles is super cheap, and once you spawn them, the rest of
-				// their lifecycle is handled entirely on the GPU, driven by a time uniform updated below
-				this.particleSystem.spawnParticle(this.options);
+        this.spaceship.animate(this.particleSystem);
 			}
-      this.pointLight.position.set(this.options.position.x, this.options.position.y, this.options.position.z);
 		}
 		this.particleSystem.update(this.tick);
+
+    this.controls.update();
 
     this.renderer.render(this.scene, this.camera);
     this.stats.end();

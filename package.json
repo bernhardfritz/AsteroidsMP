@@ -29,7 +29,6 @@
     "browserify": "^14.0.0",
     "catw": "^1.0.1",
     "concurrently": "^3.1.0",
-    "dat-gui": "^0.5.0",
     "less": "^2.7.2",
     "live-server": "^1.2.0",
     "stats.js": "^0.17.0",
