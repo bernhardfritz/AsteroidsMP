@@ -1,17 +1,20 @@
 import * as THREE from 'three';
 global.THREE = THREE;
+import Matter from 'matter-js';
 import Stats from 'stats.js';
 import dat from './dat.gui.js';
 import OBJLoader from './OBJLoader';
 import GPUParticleSystem from './GPUParticleSystem.js';
 import TrackballControls from './TrackballControls.js';
+import TWEEN from 'tween.js';
 import Spaceship from './Spaceship.js';
 
 class Game {
   constructor() {
-    this.renderer = new THREE.WebGLRenderer();
+    this.renderer = new THREE.WebGLRenderer({antialias: true});
+    this.engine = Matter.Engine.create({render: {visible: false}});
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 500);
+    this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
     this.particleSystem = new THREE.GPUParticleSystem({
       maxParticles: 250000
     });
@@ -19,7 +22,6 @@ class Game {
     this.clock = new THREE.Clock(true);
     this.stats = new Stats();
     this.gui = new dat.GUI();
-    this.settings = new Settings();
     this.objLoader = new THREE.OBJLoader();
     this.textureLoader = new THREE.TextureLoader();
     this.tick = 0;
@@ -31,7 +33,9 @@ class Game {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(this.renderer.domElement);
 
-    this.camera.position.set(0, 0, 100);
+    this.engine.world.gravity.y = 0;
+
+    this.camera.position.set(0, 0, 500);
     this.camera.lookAt(new THREE.Vector3(0, 0, 0));
 
     this.stats.showPanel(0);
@@ -51,19 +55,21 @@ class Game {
 
     let ambientLight = new THREE.AmbientLight(0x101030);
 		this.scene.add(ambientLight);
-		// let directionalLight = new THREE.DirectionalLight(0xffeedd);
-		// directionalLight.position.set(0, 0, 1);
-		// this.scene.add(directionalLight);
+		let directionalLight = new THREE.DirectionalLight(0xffeedd);
+		directionalLight.position.set(0, 0, 1);
+    directionalLight.intensity = 0.25;
+		this.scene.add(directionalLight);
+
+    // let axes = new THREE.AxisHelper(100);
+    // this.scene.add(axes);
 
     this.spawnerOptions = {
       spawnRate: 15000,
-      horizontalSpeed: 1.5,
-      verticalSpeed: 1.33,
       timeScale: 1
     };
     this.scene.add(this.particleSystem);
 
-    this.spaceship.init(this.scene, this.objLoader, this.textureLoader);
+    this.spaceship.init(this.scene, this.objLoader, this.textureLoader, this.engine);
 
     this.controls = new THREE.TrackballControls(this.camera, this.renderer.domElement);
     this.controls.rotateSpeed = 1.0;
@@ -76,40 +82,26 @@ class Game {
 		this.controls.keys = [65, 83, 68];
 
     this.initGui();
+
+    Matter.Engine.run(this.engine);
   }
 
   initGui() {
-    this.gui.add(this.settings, 'myString');
-    this.gui.add(this.settings, 'myNumber');
-    this.gui.add(this.settings, 'myBoolean');
-    this.gui.add(this.settings, 'myFunction');
-
     let cameraFolder = this.gui.addFolder('camera');
     let cameraPositionFolder = cameraFolder.addFolder('camera.position');
-    cameraPositionFolder.add(this.camera.position, 'x', -100, 100);
-    cameraPositionFolder.add(this.camera.position, 'y', -100, 100);
-    cameraPositionFolder.add(this.camera.position, 'z', -100, 100);
+    cameraPositionFolder.add(this.camera.position, 'x', -500, 500);
+    cameraPositionFolder.add(this.camera.position, 'y', -500, 500);
+    cameraPositionFolder.add(this.camera.position, 'z', -500, 500);
     let cameraRotationFolder = cameraFolder.addFolder('camera.rotation');
-    cameraRotationFolder.add(this.camera.rotation, 'x', -1, 1).step(0.01);
-    cameraRotationFolder.add(this.camera.rotation, 'y', -1, 1).step(0.01);
-    cameraRotationFolder.add(this.camera.rotation, 'z', -1, 1).step(0.01);
-    // let particleSystemFolder = this.gui.addFolder('particleSystem');
-    // particleSystemFolder.add(this.options, "velocityRandomness", 0, 3);
-		// particleSystemFolder.add(this.options, "positionRandomness", 0, 3);
-		// particleSystemFolder.add(this.options, "size", 1, 20);
-		// particleSystemFolder.add(this.options, "sizeRandomness", 0, 25);
-		// particleSystemFolder.add(this.options, "colorRandomness", 0, 1);
-		// particleSystemFolder.add(this.options, "lifetime", 0.1, 10);
-		// particleSystemFolder.add(this.options, "turbulence", 0, 1);
-    // particleSystemFolder.add(this.options.position, 'x', -10, 10).step(0.01);
-    // particleSystemFolder.add(this.options.position, 'y', -10, 10).step(0.01);
-    // particleSystemFolder.add(this.options.position, 'z', -10, 10).step(0.01);
-    // particleSystemFolder.addColor(this.options, "color").onChange(function(colorValue) {
-    //   this.options.color = '0x'+colorValue.toString(16);
-    // }.bind(this));
-    //
-		// particleSystemFolder.add(this.spawnerOptions, "spawnRate", 10, 30000);
-		// particleSystemFolder.add(this.spawnerOptions, "timeScale", -1, 1);
+    cameraRotationFolder.add(this.camera.rotation, 'x', 0, Math.PI).step(0.01);
+    cameraRotationFolder.add(this.camera.rotation, 'y', 0, Math.PI).step(0.01);
+    cameraRotationFolder.add(this.camera.rotation, 'z', 0, Math.PI).step(0.01);
+
+    let spawnerOptionsFolder = this.gui.addFolder('spawnerOptions');
+    spawnerOptionsFolder.add(this.spawnerOptions, 'spawnRate', 10, 30000);
+    spawnerOptionsFolder.add(this.spawnerOptions, 'timeScale', -1, 1);
+
+    this.spaceship.initGui(this.gui);
 
     window.addEventListener('resize', function() {
       this.camera.aspect = window.innerWidth / window.innerHeight;
@@ -117,6 +109,23 @@ class Game {
 			this.renderer.setSize(window.innerWidth, window.innerHeight);
       this.controls.handleResize();
     }.bind(this), false);
+
+    let keyDown = {};
+    document.addEventListener('keydown', function(event) {
+      let keyCode = event.keyCode;
+      if (keyDown[keyCode]) return;
+      keyDown[keyCode] = true;
+      this.spaceship.updateState(keyDown);
+    }.bind(this));
+    document.addEventListener('keyup', function(event) {
+      let keyCode = event.keyCode;
+      keyDown[keyCode] = false;
+      this.spaceship.updateState(keyDown);
+    }.bind(this));
+
+    Matter.Events.on(this.engine, 'beforeUpdate', function(event) {
+      this.spaceship.beforeUpdate();
+    }.bind(this));
   }
 
   animate() {
@@ -132,27 +141,17 @@ class Game {
     }
 		if (delta > 0) {
 			for (var x = 0; x < this.spawnerOptions.spawnRate * delta; x++) {
-        this.spaceship.animate(this.particleSystem);
+        this.spaceship.animate(this.particleSystem, this.engine);
 			}
 		}
 		this.particleSystem.update(this.tick);
 
     this.controls.update();
 
+    TWEEN.update();
+
     this.renderer.render(this.scene, this.camera);
     this.stats.end();
-  }
-}
-
-class Settings {
-  constructor() {
-    this.myString = 'helloworld';
-    this.myNumber = 1.0;
-    this.myBoolean = true;
-  }
-
-  myFunction() {
-    window.alert(this.myString);
   }
 }
 
