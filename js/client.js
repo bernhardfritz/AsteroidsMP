@@ -8,6 +8,7 @@ import GPUParticleSystem from './GPUParticleSystem.js';
 import TrackballControls from './TrackballControls.js';
 import TWEEN from 'tween.js';
 import Spaceship from './Spaceship.js';
+import Earth from './Earth.js';
 
 class Game {
   constructor() {
@@ -27,6 +28,7 @@ class Game {
     this.tick = 0;
     this.spawnerOptions = {};
     this.spaceship = new Spaceship();
+    this.earth = new Earth();
   }
 
   init() {
@@ -53,12 +55,18 @@ class Game {
     cubeTexture.format = THREE.RGBFormat;
     this.scene.background = cubeTexture;
 
-    let ambientLight = new THREE.AmbientLight(0x101030);
-		this.scene.add(ambientLight);
-		let directionalLight = new THREE.DirectionalLight(0xffeedd);
-		directionalLight.position.set(0, 0, 1);
-    directionalLight.intensity = 0.25;
-		this.scene.add(directionalLight);
+		this.scene.add(new THREE.AmbientLight(0x101030));
+    this.scene.add(new THREE.HemisphereLight(0x443333, 0x111122));
+
+    // let directionalLight = new THREE.DirectionalLight(0xffeedd);
+		// directionalLight.position.set(1, 1, 1);
+    // directionalLight.intensity = 1.0; // 0.25
+		// this.scene.add(directionalLight);
+
+    let spotLight = new THREE.SpotLight(0xffffbb, 2);
+    spotLight.position.set(1, 1, 1);
+    spotLight.position.multiplyScalar(100000);
+    this.scene.add(spotLight);
 
     // let axes = new THREE.AxisHelper(100);
     // this.scene.add(axes);
@@ -70,6 +78,8 @@ class Game {
     this.scene.add(this.particleSystem);
 
     this.spaceship.init(this.scene, this.objLoader, this.textureLoader, this.engine);
+
+    this.earth.init(this.scene);
 
     this.controls = new THREE.TrackballControls(this.camera, this.renderer.domElement);
     this.controls.rotateSpeed = 1.0;
@@ -144,7 +154,10 @@ class Game {
         this.spaceship.animate(this.particleSystem, this.engine);
 			}
 		}
+
 		this.particleSystem.update(this.tick);
+
+    this.earth.animate(this.clock.getDelta());
 
     this.controls.update();
 
