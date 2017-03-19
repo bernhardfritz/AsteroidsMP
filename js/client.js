@@ -4,11 +4,21 @@ import Matter from 'matter-js';
 import Stats from 'stats.js';
 import dat from './dat.gui.js';
 import OBJLoader from './OBJLoader';
+import MTLLoader from './MTLLoader';
 import GPUParticleSystem from './GPUParticleSystem.js';
 import TrackballControls from './TrackballControls.js';
 import TWEEN from 'tween.js';
 import Spaceship from './Spaceship.js';
 import Earth from './Earth.js';
+import Asteroid from './Asteroid.js';
+
+function getRandomArbitrary(min, max) {
+    return Math.random() * (max - min) + min;
+}
+
+function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 
 class Game {
   constructor() {
@@ -25,10 +35,12 @@ class Game {
     this.gui = new dat.GUI();
     this.objLoader = new THREE.OBJLoader();
     this.textureLoader = new THREE.TextureLoader();
+    this.mtlLoader = new THREE.MTLLoader();
     this.tick = 0;
     this.spawnerOptions = {};
     this.spaceship = new Spaceship();
     this.earth = new Earth();
+    this.asteroid = new Asteroid();
   }
 
   init() {
@@ -80,6 +92,8 @@ class Game {
     this.spaceship.init(this.scene, this.objLoader, this.textureLoader, this.engine);
 
     this.earth.init(this.scene);
+
+    this.asteroid.init(this.scene, this.objLoader, this.mtlLoader);
 
     this.controls = new THREE.TrackballControls(this.camera, this.renderer.domElement);
     this.controls.rotateSpeed = 1.0;
@@ -158,6 +172,8 @@ class Game {
 		this.particleSystem.update(this.tick);
 
     this.earth.animate(this.clock.getDelta());
+
+    this.asteroid.animate(this.clock.getDelta());
 
     this.controls.update();
 
